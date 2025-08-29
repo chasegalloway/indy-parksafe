@@ -1,6 +1,3 @@
-# app.py
-# FastAPI service with user-friendly, styled UI: input address + radius, outputs free-spot probabilities for nearby meters.
-
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
 import pandas as pd
@@ -123,7 +120,7 @@ def predict_address(
 
     try:
         ts = pd.to_datetime(datetime)
-        ts = ts.replace(year=2024)
+        ts = ts.replace(year=2025)
     except:
         return HTMLResponse(f"<div class='container'><p class='error'>Invalid date/time format.</p><a class='back-link' href='/'>New Query</a></div>")
 
@@ -141,65 +138,54 @@ def predict_address(
         results.append((m.meter_id, m.distance, prob, m.lat, m.lng))
 
     results.sort(key=lambda x: x[1])
-    avg_prob = np.mean([p for _, _, p, _, _ in results])
+    avg_prob = np.mean([p for _,_,p,_,_ in results])
 
     rows = "".join(
-    f"<tr class='meter-row' data-lat='{lat}' data-lng='{lng}'>"
-    f"<td>{mid}</td><td>{dist:.1f} m</td><td>{prob*100:.1f}%</td></tr>"
-    for mid, dist, prob, lat, lng in results
-)
+        f"<tr title='Lat: {lat}, Lng: {lng}'><td>{mid}</td><td>{dist:.1f} m</td><td>{prob*100:.1f}%</td></tr>"
+        for mid, dist, prob, lat, lng in results
+    )
+
+    # create the markers, i fucking hate frontend
+    markers_js = "".join(
+        f"L.circleMarker([{lat}, {lng}], {{radius: 7, color: '{'#4CAF50' if prob>0.7 else '#FFC107' if prob>0.4 else '#F44336'}'}})"
+        f".bindPopup('Meter: {mid}<br>Free: {prob*100:.1f}%<br>Dist: {dist:.1f}m').addTo(map);"
+        for mid, dist, prob, lat, lng in results
+    )
 
     return HTMLResponse(f"""
-    <html><head><title>Results - Indy ParkSafe</title>{STYLE}</head><body>
-      <div class="container">
-        <div id="tooltip" class="tooltip"></div>
-        <h1>Availability near {address}</h1>
-        <p>Found <strong>{len(results)}</strong> meters within <strong>{radius}m</strong>.</p>
-        <p><strong>Average free chance:</strong> {avg_prob*100:.1f}%</p>
-        <table>
-          <thead><tr><th>Meter ID</th><th>Distance</th><th>Free %</th></tr></thead>
-          <tbody>{rows}</tbody>
-        </table>
-        <a class="back-link" href="/">New Query</a>
-      </div>
-      <script>
-  const tooltip = document.getElementById('tooltip');
+    <html>
+      <head>
+        <title>Results - Indy ParkSafe</title>
+        {STYLE}
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          #map {{ height: 450px; margin-top: 20px; border-radius: 8px; }}
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Availability near {address}</h1>
+          <p>Found <strong>{len(results)}</strong> meters within <strong>{radius}m</strong>.</p>
+          <p><strong>Average free chance:</strong> {avg_prob*100:.1f}%</p>
 
-  function showTip(e, text) {{
-    tooltip.textContent = text;
-    tooltip.style.display = 'block';
-    const offset = 12;
-    tooltip.style.left = (e.clientX + offset) + 'px';
-    tooltip.style.top  = (e.clientY + offset) + 'px';
-  }}
+          <div id="map"></div>
 
-  function hideTip() {{
-    tooltip.style.display = 'none';
-  }}
+          <script>
+            var map = L.map('map').setView([{location.latitude}, {location.longitude}], 16);
+            L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }}).addTo(map);
+            {markers_js}
+          </script>
 
-  // Delegate hover events to table rows with class 'meter-row'
-  document.addEventListener('mouseover', (e) => {{
-    const row = e.target.closest('.meter-row');
-    if (!row) return;
-    const lat = row.getAttribute('data-lat');
-    const lng = row.getAttribute('data-lng');
-    showTip(e, `lat: ${{Number(lat).toFixed(6)}}, lng: ${{Number(lng).toFixed(6)}}`);
-  }});
-
-  document.addEventListener('mousemove', (e) => {{
-    if (tooltip.style.display === 'block') {{
-      const offset = 12;
-      tooltip.style.left = (e.clientX + offset) + 'px';
-      tooltip.style.top  = (e.clientY + offset) + 'px';
-    }}
-  }});
-
-  document.addEventListener('mouseout', (e) => {{
-    const row = e.target.closest('.meter-row');
-    if (!row) return;
-    hideTip();
-  }});
-</script>
-
-    </body></html>
+          <table>
+            <thead><tr><th>Meter ID</th><th>Distance</th><th>Free %</th></tr></thead>
+            <tbody>{rows}</tbody>
+          </table>
+          <a class="back-link" href="/">New Query</a>
+        </div>
+      </body>
+    </html>
     """)
