@@ -62,10 +62,10 @@ The application uses several data sources:
 ## Model
 
 The machine learning model takes into account various features:
-- Temporal factors (hour, day of week)
-- Location features (zone, downtown flag)
-- Environmental conditions (temperature)
-- Special events (holidays)
+- Temporal factors 
+- Location features
+- Environmental conditions 
+- Special events 
 
 The model is trained using historical parking data and is saved as `parksafe_model.pkl`.
 
