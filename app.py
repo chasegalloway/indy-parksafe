@@ -144,8 +144,7 @@ def predict_address(
         f"<tr title='Lat: {lat}, Lng: {lng}'><td>{mid}</td><td>{dist:.1f} m</td><td>{prob*100:.1f}%</td></tr>"
         for mid, dist, prob, lat, lng in results
     )
-
-    # create the markers, i fucking hate frontend
+    
     markers_js = "".join(
         f"L.circleMarker([{lat}, {lng}], {{radius: 7, color: '{'#4CAF50' if prob>0.7 else '#FFC107' if prob>0.4 else '#F44336'}'}})"
         f".bindPopup('Meter: {mid}<br>Free: {prob*100:.1f}%<br>Dist: {dist:.1f}m').addTo(map);"
