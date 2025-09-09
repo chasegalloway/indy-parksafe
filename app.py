@@ -9,7 +9,7 @@ from geopy.exc import GeocoderUnavailable
 from geopy.distance import geodesic
 import os
 
-app = FastAPI(title="Indy ParkSafe Web App")
+app = FastAPI(title="Indy ParkSafe")
 
 BASE_DIR = os.path.dirname(__file__)
 bundle = joblib.load(os.path.join(BASE_DIR, 'model', 'parksafe_model.pkl'))
@@ -81,19 +81,19 @@ def form_page():
     <html><head><title>Indy ParkSafe</title>{STYLE}</head><body>
       <div class="container">
         <h1>Indy ParkSafe</h1>
-        <h2>Estimate Free Parking Probability</h2>
+        <h2>Estimate Open Parking Probability</h2>
         <form method="post" action="/predict">
           <label>Address</label>
           <input type="text" name="address" placeholder="123 Main St, Indianapolis, IN" required>
 
           <label>Radius (meters)</label>
-          <input type="number" name="radius" value="200" min="50" required>
+          <input type="number" name="radius" min="50" required>
 
           <label>Date & Time</label>
           <input type="datetime-local" name="datetime" required>
 
           <label>Temperature (°F)</label>
-          <input type="number" name="temp_f" value="70">
+          <input type="number" name="temp_f">
 
           <label class="checkbox-label">Holiday <input type="checkbox" name="is_holiday" value="1"></label>
 
@@ -129,7 +129,7 @@ def predict_address(
     meters['distance'] = meters.apply(lambda row: geodesic((location.latitude, location.longitude), (row.lat, row.lng)).meters, axis=1)
     nearby = meters[meters['distance'] <= radius].copy()
     if nearby.empty:
-        return HTMLResponse(f"<div class='container'><p class='error'>No meters found within {radius}m of {address}.</p><a class='back-link' href='/'>New Query</a></div>")
+        return HTMLResponse(f"<div class='container'><p class='error'>No parking meters found within {radius}m of {address}.</p><a class='back-link' href='/'>New Query</a></div>")
 
     results = []
     for _, m in nearby.iterrows():
